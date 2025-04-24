@@ -83,8 +83,8 @@ let data;
                 .attr('fill', 'steelblue');
 
         svg.append('text')
-            .attr("x", 91.5)
-            .attr("y", 0)
+            .attr("x", (W / 2) - margin.left + 40)
+            .attr("y", 0 - ((margin.top - 10) / 2))
             .attr("text-anchor", "middle")
             .style("font-size", "16px")
             .style("text-decoration", "underline")
