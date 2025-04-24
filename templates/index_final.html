@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Music Dashboard </title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style_final.css') }}" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="{{ url_for('static', filename='js/d3_script_final.js') }}"></script>
+</head>
+<body>
+    <div id="controls">
+        <!-- Dropdowns for selecting attributes -->
+         <select id="cat-select"></select>
+         <select id="num-select"></select>
+         <button id="num-update">Update Hist</button>
+         <!-- Scatter axis selectors -->
+          X: <select id="x-select"></select>
+          Y: <select id="y-select"></select>
+    </div>
+
+    <div id="chart-grid">
+        <div id="bar-chart" class="chart"></div>
+        <div id="histogram" class="chart"></div>
+        <div id="scatterplot" class="chart"></div>
+        <div id="scree-plot" class="chart"></div>
+        <div id="parallel-coords" class="chart"></div>
+        <div id="area-chart" class="chart"></div>
+        <div id="mds-plot" class="chart"></div>
+    </div>
+</body>
+</html>
