@@ -21,10 +21,10 @@ body {
     position: relative;
 }
 /* Place 7 charts: last cell empty */
-#bar-chart  { grid-area: 1 / 1 / 2 / 2; }
-#histogram  { grid-area: 1 / 2 / 2 / 3; }
-#scatterplot{ grid-area: 1 / 3 / 2 / 4; }
-#scree-plot { grid-area: 1 / 4 / 2 / 5; }
+#scree-plot  { grid-area: 1 / 1 / 2 / 2; }
+#scatterplot  { grid-area: 1 / 2 / 2 / 3; }
+#histogram{ grid-area: 1 / 3 / 2 / 4; }
+#bar-chart { grid-area: 1 / 4 / 2 / 5; }
 #parallel-coords{ grid-area: 2 / 1 / 3 / 3; }
-#area-chart     { grid-area: 2 / 3 / 3 / 4; }
-#mds-plot       { grid-area: 2 / 4 / 3 / 5; }
+#mds-plot     { grid-area: 2 / 3 / 3 / 4; }
+#area-chart       { grid-area: 2 / 4 / 3 / 5; }
