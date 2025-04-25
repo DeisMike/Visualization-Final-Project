@@ -29,7 +29,7 @@ let data;
 
 
     // Bar chart
-    function drawBar(attr) {
+    function drawBar(attr, dataArray = data) {
         // Setup and sizing
         const container = d3.select('#bar-chart');
         container.selectAll('*').remove();
@@ -45,7 +45,7 @@ let data;
         // group & count
         // d3.rollup returns a Map; convert to array of {key, value}
         const counts = Array.from(
-            d3.rollup(data, v => v.length, d => d[attr]),
+            d3.rollup(dataArray, v => v.length, d => d[attr]),
             ([key, value]) => ({key, value})
         )
         .sort((a, b) => b.value - a.value); // sort by descending value
@@ -88,7 +88,7 @@ let data;
             .attr("text-anchor", "middle")
             .style("font-size", "16px")
             .style("text-decoration", "underline")
-            .text(`Total songs by ${attr} `);
+            .text(`Distribution of songs by ${attr} `);
 
         // Add x-axis label
         svg.append("text")
@@ -122,7 +122,7 @@ let data;
                 }
 
                 // grab all Song_ids in those categories
-                const selectedIDs = data.filter(d => selectedCats.includes(d[attr])).map(d => d.Song_id);
+                const selectedIDs = dataArray.filter(d => selectedCats.includes(d[attr])).map(d => d.song_id);
 
                 // fire the global filter event
                 dispatcher.call('filter', null, selectedIDs);
@@ -137,7 +137,7 @@ let data;
     }
 
     // Histogram
-    function drawHist(attr) {
+    function drawHist(attr, dataArray = data) {
         // Clear out any old chart
         const container = d3.select('#histogram');
         container.selectAll('*').remove();
@@ -156,7 +156,7 @@ let data;
 
         // X scale: numeric domain of your chosen attribute
         const x = d3.scaleLinear()
-            .domain(d3.extent(data, d => +d[attr]))
+            .domain(d3.extent(dataArray, d => +d[attr]))
             .nice()
             .range([0, W]);
 
@@ -165,7 +165,7 @@ let data;
             .value(d => +d[attr])
             .domain(x.domain())
             .thresholds(20);
-        const bins = binGenerator(data);
+        const bins = binGenerator(dataArray);
 
         // Y scale: count of items in each bin
         const y = d3.scaleLinear()
@@ -218,16 +218,16 @@ let data;
         const brush = d3.brushX()
             .extent([[0, 0], [W, H]])
             .on('end', event => {
-                let selected = data;
+                let selected = dataArray;
                 if (event.selection) {
                 const [x0, x1] = event.selection;
                 const d0 = x.invert(x0), d1 = x.invert(x1);
-                selected = data.filter(d => {
+                selected = dataArray.filter(d => {
                     const v = +d[attr];
                     return v >= d0 && v <= d1;
                 });
                 }
-                const selectedIDs = selected.map(d => d.Song_id);
+                const selectedIDs = selected.map(d => d.song_id);
                 dispatcher.call('filter', null, selectedIDs);
             });
 
@@ -240,11 +240,248 @@ let data;
     }
 
     // Scatterplot (handles three cases)
-    function drawScatter(xAttr, yAttr) {
-        // if both numeric -> normal dots
-        // if one cat -> jitter strip
-        // if both cat -> sized/overplotted symbols
-        // brush -> dispatch
+    function drawScatter(xAttr, yAttr, dataArray = data) {
+        // 1) Clear old
+        const container = d3.select('#scatterplot');
+        container.selectAll('*').remove();
+
+        // 2) Margins and full size
+        const margin = { top: 20, right: 20, bottom: 50, left: 60 };
+        const W = parseInt(container.style('width'))  - margin.left - margin.right;
+        const H = parseInt(container.style('height')) - margin.top  - margin.bottom;
+
+        // 3) SVG root
+        const svg = container.append('svg')
+            .attr('width',  W + margin.left + margin.right)
+            .attr('height', H + margin.top  + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // 4) Type detection
+        const xIsNum = typeof dataArray[0][xAttr] === 'number';
+        const yIsNum = typeof dataArray[0][yAttr] === 'number';
+
+        // 5) Scales
+        let xScale, yScale;
+        if (xIsNum) {
+            xScale = d3.scaleLinear()
+            .domain(d3.extent(dataArray, d => d[xAttr])).nice()
+            .range([0, W]);
+        } else {
+            const xDomain = Array.from(new Set(dataArray.map(d => d[xAttr])));
+            xScale = d3.scaleBand()
+            .domain(xDomain)
+            .range([0, W])
+            .padding(0.2);
+        }
+
+        if (yIsNum) {
+            yScale = d3.scaleLinear()
+            .domain(d3.extent(dataArray, d => d[yAttr])).nice()
+            .range([H, 0]);
+        } else {
+            const yDomain = Array.from(new Set(dataArray.map(d => d[yAttr])));
+            yScale = d3.scaleBand()
+            .domain(yDomain)
+            .range([H, 0])
+            .padding(0.2);
+        }
+
+        // 6) Axes
+        svg.append('g')
+            .attr('transform', `translate(0,${H})`)
+            .call(xIsNum ? d3.axisBottom(xScale) : d3.axisBottom(xScale))
+            .selectAll('text')
+            .attr('transform', 'rotate(-45)')
+            .attr('text-anchor', 'end')
+            .attr('dx', '-0.6em')
+            .attr('dy', '0.1em');
+
+        svg.append('g')
+            .call(yIsNum ? d3.axisLeft(yScale) : d3.axisLeft(yScale));
+
+        // Add title
+        svg.append('text')
+            .attr('x', (W / 2) - margin.left + 40)
+            .attr('y', 0 - ((margin.top - 10) / 2))
+            .attr('text-anchor', 'middle')
+            .style('font-size', '16px')
+            .style('text-decoration', 'underline')
+            .text(`Scatterplot of ${yAttr} vs ${xAttr}`);
+
+        // 7) Axis labels
+        svg.append('text')
+            .attr('x', W / 2)
+            .attr('y', H + margin.bottom - 10)
+            .attr('text-anchor', 'middle')
+            .text(xAttr);
+
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -H / 2)
+            .attr('y', -margin.left + 15)
+            .attr('text-anchor', 'middle')
+            .text(yAttr);
+
+        // 8) Draw points / overplots
+        if (xIsNum && yIsNum) {
+            // simple scatter
+            svg.selectAll('circle')
+            .data(dataArray)
+            .enter().append('circle')
+                .attr('cx', d => xScale(d[xAttr]))
+                .attr('cy', d => yScale(d[yAttr]))
+                .attr('r', 3)
+                .attr('fill', 'steelblue')
+                .attr('opacity', 0.7);
+
+        } else if (xIsNum && !yIsNum) {
+            // numeric X vs categorical Y: strip + jitter along Y
+            const jitter = yScale.bandwidth() * 0.7;
+            svg.selectAll('circle')
+            .data(dataArray)
+            .enter().append('circle')
+                .attr('cx', d => xScale(d[xAttr]))
+                .attr('cy', d =>
+                yScale(d[yAttr])
+                + yScale.bandwidth()/2
+                + (Math.random() - 0.5) * jitter
+                )
+                .attr('r', 3)
+                .attr('fill', 'steelblue')
+                .attr('opacity', 0.7);
+
+        } else if (!xIsNum && yIsNum) {
+            // categorical X vs numeric Y
+            const jitter = xScale.bandwidth() * 0.7;
+            svg.selectAll('circle')
+            .data(dataArray)
+            .enter().append('circle')
+                .attr('cx', d =>
+                xScale(d[xAttr])
+                + xScale.bandwidth()/2
+                + (Math.random() - 0.5) * jitter
+                )
+                .attr('cy', d => yScale(d[yAttr]))
+                .attr('r', 3)
+                .attr('fill', 'steelblue')
+                .attr('opacity', 0.7);
+
+        } else {
+            // both categorical → aggregate & overplot
+            // group into combos
+            const comboMap = d3.rollup(
+            dataArray,
+            v => v.map(d => d.song_id),
+            d => d[xAttr],
+            d => d[yAttr]
+            );
+
+            // flatten
+            const combos = [];
+            for (const [xVal, inner] of comboMap) {
+            for (const [yVal, ids] of inner) {
+                combos.push({
+                xVal, yVal,
+                ids,
+                count: ids.length
+                });
+            }
+            }
+
+            // radius scale
+            const maxCount = d3.max(combos, d => d.count);
+            const maxR = Math.min(xScale.bandwidth(), yScale.bandwidth()) / 2;
+            const rScale = d3.scaleSqrt()
+            .domain([0, maxCount])
+            .range([0, maxR]);
+
+            // draw one circle per combo
+            svg.selectAll('circle')
+            .data(combos)
+            .enter().append('circle')
+                .attr('cx', d => xScale(d.xVal) + xScale.bandwidth()/2)
+                .attr('cy', d => yScale(d.yVal) + yScale.bandwidth()/2)
+                .attr('r',  d => rScale(d.count))
+                .attr('fill', 'steelblue')
+                .attr('opacity', 0.7)
+                // store ids for brushing
+                .each(function(d) { d.__ids = d.ids; });
+        }
+
+        // 9) Brush → linked filtering
+        const brush = d3.brush()
+            .extent([[0, 0], [W, H]])
+            .on('end', ({ selection }) => {
+            let selectedIDs;
+            if (!selection) {
+                // no brush → everyone
+                selectedIDs = dataArray.map(d => d.song_id);
+            } else {
+                const [[x0, y0], [x1, y1]] = selection;
+                selectedIDs = [];
+
+                if (xIsNum && yIsNum) {
+                // invert pixels → data ranges
+                const x0v = xScale.invert(x0), x1v = xScale.invert(x1);
+                const y0v = yScale.invert(y1), y1v = yScale.invert(y0);
+                dataArray.forEach(d => {
+                    const xv = d[xAttr], yv = d[yAttr];
+                    if (xv >= Math.min(x0v, x1v) && xv <= Math.max(x0v, x1v)
+                    && yv >= Math.min(y0v, y1v) && yv <= Math.max(y0v, y1v)) {
+                    selectedIDs.push(d.song_id);
+                    }
+                });
+
+                } else if (xIsNum && !yIsNum) {
+                // numeric X, categorical Y
+                const x0v = xScale.invert(x0), x1v = xScale.invert(x1);
+                const cats = yScale.domain().filter(cat => {
+                    const cy = yScale(cat) + yScale.bandwidth()/2;
+                    return cy >= y0 && cy <= y1;
+                });
+                dataArray.forEach(d => {
+                    if (d[xAttr] >= Math.min(x0v, x1v) && d[xAttr] <= Math.max(x0v, x1v)
+                    && cats.includes(d[yAttr])) {
+                    selectedIDs.push(d.song_id);
+                    }
+                });
+
+                } else if (!xIsNum && yIsNum) {
+                // categorical X, numeric Y
+                const y0v = yScale.invert(y1), y1v = yScale.invert(y0);
+                const cats = xScale.domain().filter(cat => {
+                    const cx = xScale(cat) + xScale.bandwidth()/2;
+                    return cx >= x0 && cx <= x1;
+                });
+                dataArray.forEach(d => {
+                    if (d[yAttr] >= Math.min(y0v, y1v) && d[yAttr] <= Math.max(y0v, y1v)
+                    && cats.includes(d[xAttr])) {
+                    selectedIDs.push(d.song_id);
+                    }
+                });
+
+                } else {
+                // both categorical → look at combo circles
+                svg.selectAll('circle').each(function(d) {
+                    const cx = +d3.select(this).attr('cx');
+                    const cy = +d3.select(this).attr('cy');
+                    if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1) {
+                    selectedIDs = selectedIDs.concat(d.__ids);
+                    }
+                });
+                }
+            }
+
+            dispatcher.call('filter', null, selectedIDs);
+            });
+
+        svg.append('g')
+            .attr('class', 'brush')
+            .call(brush);
+
+        // 10) Notify dimension change (so you can e.g. recolor on axis swap)
+        dispatcher.call('dimensionChanged', null, { x: xAttr, y: yAttr });
     }
 
     // Scree plot
@@ -277,9 +514,28 @@ let data;
     }
 
     // Redraw all w/ current filter
-    function updateAll(filteredIDs) {
-        currentFilter = new Set(filteredIDs);
-        // for each chart, apply filter to data and rerender only highlights
+    function updateAll(selectedIDs) {
+        // keep track of the current filter
+        const filteredData = data.filter(d => selectedIDs.includes(d.song_id));
+
+        // pull the currently-selected attributes from your dropdowns
+        const curCat = d3.select('#cat-select').property('value');
+        const curNum = d3.select('#num-select').property('value');
+        const curX   = d3.select('#x-select').property('value');
+        const curY   = d3.select('#y-select').property('value');
+
+        // clear & redraw each view with the filtered data
+        d3.select('#bar-chart').selectAll('*').remove();
+        drawBar(curCat, filteredData);
+
+        d3.select('#histogram').selectAll('*').remove();
+        drawHist(curNum, filteredData);
+
+        d3.select('#scatterplot').selectAll('*').remove();
+        drawScatter(curX, curY, filteredData);
+
+        // similarly add for scree, PCP, area, and MDS for those filters to update
+        
     }
 
     // Wire dispatcher
