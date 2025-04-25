@@ -138,8 +138,105 @@ let data;
 
     // Histogram
     function drawHist(attr) {
-        // d3.bin, draw bars
-        // brush -> dispatch
+        // Clear out any old chart
+        const container = d3.select('#histogram');
+        container.selectAll('*').remove();
+
+        // Set up margins and inner width/height
+        const margin = { top: 20, right: 20, bottom: 50, left: 40 };
+        const W = parseInt(container.style('width'))  - margin.left - margin.right;
+        const H = parseInt(container.style('height')) - margin.top  - margin.bottom;
+
+        // Append SVG & group
+        const svg = container.append('svg')
+            .attr('width',  W + margin.left + margin.right)
+            .attr('height', H + margin.top  + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // X scale: numeric domain of your chosen attribute
+        const x = d3.scaleLinear()
+            .domain(d3.extent(data, d => +d[attr]))
+            .nice()
+            .range([0, W]);
+
+        // Create bins
+        const binGenerator = d3.bin()
+            .value(d => +d[attr])
+            .domain(x.domain())
+            .thresholds(20);
+        const bins = binGenerator(data);
+
+        // Y scale: count of items in each bin
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(bins, b => b.length)])
+            .nice()
+            .range([H, 0]);
+
+        // Draw axes
+        svg.append('g')
+            .attr('transform', `translate(0,${H})`)
+            .call(d3.axisBottom(x));
+        svg.append('g')
+            .call(d3.axisLeft(y));
+
+        // Add title
+        svg.append('text')
+            .attr('x', (W / 2) - margin.left + 40)
+            .attr('y', 0 - ((margin.top - 10) / 2))
+            .attr('text-anchor', 'middle')
+            .style('font-size', '16px')
+            .style('text-decoration', 'underline')
+            .text(`Distribution of Songs by ${attr}`);
+
+        // Axis labels
+        svg.append('text')
+            .attr('x',  W / 2)
+            .attr('y',  H + margin.bottom - 10)
+            .attr('text-anchor', 'middle')
+            .text(attr);
+
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -H / 2)
+            .attr('y', -margin.left + 15)
+            .attr('text-anchor', 'middle')
+            .text('Count');
+
+        // Draw bars
+        svg.selectAll('.bar')
+            .data(bins)
+            .enter().append('rect')
+            .attr('class', 'bar')
+            .attr('x', d => x(d.x0) + 1)
+            .attr('y', d => y(d.length))
+            .attr('width', d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+            .attr('height',d => H - y(d.length))
+            .attr('fill','steelblue');
+
+        // Add brush for linked‐filtering
+        const brush = d3.brushX()
+            .extent([[0, 0], [W, H]])
+            .on('end', event => {
+                let selected = data;
+                if (event.selection) {
+                const [x0, x1] = event.selection;
+                const d0 = x.invert(x0), d1 = x.invert(x1);
+                selected = data.filter(d => {
+                    const v = +d[attr];
+                    return v >= d0 && v <= d1;
+                });
+                }
+                const selectedIDs = selected.map(d => d.Song_id);
+                dispatcher.call('filter', null, selectedIDs);
+            });
+
+        svg.append('g')
+            .attr('class', 'brush')
+            .call(brush);
+
+        // Notify other charts if the numeric dimension changed
+        dispatcher.call('dimensionChanged', null, attr);
     }
 
     // Scatterplot (handles three cases)
