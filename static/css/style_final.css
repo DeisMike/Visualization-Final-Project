@@ -11,7 +11,7 @@ body {
 #chart-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 10px;
     height: calc(100vh - 60px); /* leave room for controls */
 }
@@ -19,6 +19,13 @@ body {
     border: 1px solid #ddd;
     background: white;
     position: relative;
+    overflow: hidden;
+}
+
+.chart svg {
+    width: 100%; /* fill the cell exactly */
+    height: 100%;
+    display: block; /* remove inline-SVG whitespace */
 }
 /* Place 7 charts: last cell empty */
 #scree-plot  { grid-area: 1 / 1 / 2 / 2; }
