@@ -88,7 +88,7 @@ let data;
             .attr("text-anchor", "middle")
             .style("font-size", "16px")
             .style("text-decoration", "underline")
-            .text(`Distribution of songs by ${attr} `);
+            .text(`Distribution of Songs by ${attr} `);
 
         // Add x-axis label
         svg.append("text")
