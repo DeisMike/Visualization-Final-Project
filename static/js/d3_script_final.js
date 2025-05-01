@@ -2,6 +2,7 @@
 const dispatcher = d3.dispatch('filter', 'dimensionChanged');
 let currentFilter = null;
 let data; 
+let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS;
 
 (async function() {
     const res = await fetch('/api/data');
@@ -105,7 +106,7 @@ let data;
             .text("Number of songs");
         
         // Brushing
-        const brush = d3.brushX()
+        brushBar = d3.brushX()
             .extent([[0, 0], [W, H]])
             .on('end', ({selection}) => {
                 let selectedCats;
@@ -130,7 +131,7 @@ let data;
 
         svg.append('g')
             .attr('class', 'brush')
-            .call(brush);
+            .call(brushBar);
 
         // notify other charts that the dimension changed
         dispatcher.call('dimensionChanged', null, attr);
@@ -215,7 +216,7 @@ let data;
             .attr('fill','steelblue');
 
         // Add brush for linked‐filtering
-        const brush = d3.brushX()
+        brushHist = d3.brushX()
             .extent([[0, 0], [W, H]])
             .on('end', event => {
                 let selected = dataArray;
@@ -233,7 +234,7 @@ let data;
 
         svg.append('g')
             .attr('class', 'brush')
-            .call(brush);
+            .call(brushHist);
 
         // Notify other charts if the numeric dimension changed
         dispatcher.call('dimensionChanged', null, attr);
@@ -410,7 +411,7 @@ let data;
         }
 
         // 9) Brush → linked filtering
-        const brush = d3.brush()
+        brushScatter = d3.brush()
             .extent([[0, 0], [W, H]])
             .on('end', ({ selection }) => {
             let selectedIDs;
@@ -478,7 +479,7 @@ let data;
 
         svg.append('g')
             .attr('class', 'brush')
-            .call(brush);
+            .call(brushScatter);
 
         // 10) Notify dimension change (so you can e.g. recolor on axis swap)
         dispatcher.call('dimensionChanged', null, { x: xAttr, y: yAttr });
@@ -540,6 +541,21 @@ let data;
 
     // Wire dispatcher
     dispatcher.on('filter', updateAll);
+
+    d3.select('#reset-btn').on('click', () => {
+        // reset data filter
+        const allIDs = data.map(d => d.song_id);
+        updateAll(allIDs);
+
+        // clear each brush visually
+        d3.select('#bar-chart .brush').call(brushBar.move, null);
+        d3.select('#histogram .brush').call(brushHist.move, null);
+        d3.select('#scatterplot .brush').call(brushScatter.move, null);
+        // d3.select('#scree-plot .brush').call(brushScree.move, null);
+        // d3.select('#pcp .brush').call(brushPCP.move, null);
+        // d3.select('#area-chart .brush').call(brushArea.move, null);
+        // d3.select('#mds .brush').call(brushMDS.move, null);
+    })
 
     const catAttrs = ['artist_type', 'main_genre', 'explicit', 'key', 'mode', 'time_signature'];
     const numAttrs = ['Release_year', 'Duration_sec','Acousticness','Danceability','Energy','Instrumentalness','Liveness', 'Loudness','Speechiness','Valence','Tempo','Artist_popularity','Followers','Song_popularity'];
