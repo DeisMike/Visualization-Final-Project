@@ -8,23 +8,26 @@
     <script src="{{ url_for('static', filename='js/d3_script_final.js') }}"></script>
 </head>
 <body>
-    <div id="controls">
-        <!-- <h3>Music & Artist Metadata Dashboard</h1> -->
-        <!-- Scatter axis selectors -->
-        X: <select id="x-select"></select>
-        Y: <select id="y-select"></select>
-        <!-- Dropdowns for selecting attributes -->
-         <select id="num-select"></select>
-         <button id="num-update">Update Hist</button>
-         <select id="cat-select"></select>
+    <h1>Music & Artist Metadata Dashboard</h1>
          
-    </div>
-
     <div id="chart-grid">
         <div id="scree-plot" class="chart"></div>
-        <div id="scatterplot" class="chart"></div>
-        <div id="histogram" class="chart"></div>
-        <div id="bar-chart" class="chart"></div>
+        <div id="scatterplot" class="chart">
+            <div class="chart-controls">
+                X: <select class="x-select"></select>
+                Y: <select class="y-select"></select>
+            </div>
+        </div>
+        <div id="histogram" class="chart">
+            <div class="chart-controls">
+                <select class="num-select"></select>
+            </div>
+        </div>
+        <div id="bar-chart" class="chart">
+            <div class="chart-controls">
+                <select class="cat-select"></select>
+            </div>
+        </div>
         <div id="parallel-coords" class="chart"></div>
         <div id="mds-plot" class="chart"></div>
         <div id="area-chart" class="chart"></div>

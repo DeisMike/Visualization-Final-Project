@@ -32,7 +32,7 @@ let data;
     function drawBar(attr, dataArray = data) {
         // Setup and sizing
         const container = d3.select('#bar-chart');
-        container.selectAll('*').remove();
+        container.select('svg').remove();
         const margin = {top: 20, right: 20, bottom: 70, left: 40};
         const W = parseInt(container.style('width'))  - margin.left - margin.right;
         const H = parseInt(container.style('height')) - margin.top  - margin.bottom;
@@ -140,7 +140,7 @@ let data;
     function drawHist(attr, dataArray = data) {
         // Clear out any old chart
         const container = d3.select('#histogram');
-        container.selectAll('*').remove();
+        container.select('svg').remove();
 
         // Set up margins and inner width/height
         const margin = { top: 20, right: 20, bottom: 50, left: 40 };
@@ -243,7 +243,7 @@ let data;
     function drawScatter(xAttr, yAttr, dataArray = data) {
         // 1) Clear old
         const container = d3.select('#scatterplot');
-        container.selectAll('*').remove();
+        container.select('svg').remove();
 
         // 2) Margins and full size
         const margin = { top: 20, right: 20, bottom: 50, left: 60 };
@@ -519,19 +519,19 @@ let data;
         const filteredData = data.filter(d => selectedIDs.includes(d.song_id));
 
         // pull the currently-selected attributes from your dropdowns
-        const curCat = d3.select('#cat-select').property('value');
-        const curNum = d3.select('#num-select').property('value');
-        const curX   = d3.select('#x-select').property('value');
-        const curY   = d3.select('#y-select').property('value');
+        const curCat = d3.select('.cat-select').property('value');
+        const curNum = d3.select('.num-select').property('value');
+        const curX   = d3.select('.x-select').property('value');
+        const curY   = d3.select('.y-select').property('value');
 
         // clear & redraw each view with the filtered data
-        d3.select('#bar-chart').selectAll('*').remove();
+        d3.select('#bar-chart').select('svg').remove();
         drawBar(curCat, filteredData);
 
-        d3.select('#histogram').selectAll('*').remove();
+        d3.select('#histogram').select('svg').remove();
         drawHist(curNum, filteredData);
 
-        d3.select('#scatterplot').selectAll('*').remove();
+        d3.select('#scatterplot').select('svg').remove();
         drawScatter(curX, curY, filteredData);
 
         // similarly add for scree, PCP, area, and MDS for those filters to update
@@ -541,41 +541,58 @@ let data;
     // Wire dispatcher
     dispatcher.on('filter', updateAll);
 
-    const catAttrs = ['song_name', 'artist', 'artist_type', 'main_genre', 'explicit', 'key', 'mode', 'time_signature'];
+    const catAttrs = ['artist_type', 'main_genre', 'explicit', 'key', 'mode', 'time_signature'];
     const numAttrs = ['Release_year', 'Duration_sec','Acousticness','Danceability','Energy','Instrumentalness','Liveness', 'Loudness','Speechiness','Valence','Tempo','Artist_popularity','Followers','Song_popularity'];
 
-    // Populate dropdowns
-    catAttrs.forEach(a => d3.select('#cat-select').append('option').text(a).attr('value',a));
-    numAttrs.forEach(a => d3.select('#num-select').append('option').text(a).attr('value',a));
-    [...catAttrs, ...numAttrs].forEach(a => {
-        d3.select('#x-select').append('option').text(a).attr('value',a);
-        d3.select('#y-select').append('option').text(a).attr('value',a);
+    // BAR CHART CONTROLS
+    const barDiv = d3.select('#bar-chart');
+    const barSelect = barDiv.select('.cat-select');
+    barSelect.selectAll('option')
+        .data(catAttrs)
+        .enter().append('option')
+            .attr('value', d => d)
+            .text(d => d);
+    barDiv.select('.cat-select').on('change', () => {
+        const attr = barSelect.property('value');
+        drawBar(attr);
     });
 
-    // Hookup event handlers
-    d3.select('#num-update').on('click', () => {
-        const attr = d3.select('#num-select').property('value');
-        d3.select('#histogram').selectAll('*').remove();
+    // HISTOGRAM CONTROLS
+    const histDiv = d3.select('#histogram');
+    const histSelect = histDiv.select('.num-select');
+    histSelect.selectAll('option')
+        .data(numAttrs)
+        .enter().append('option')
+            .attr('value', d => d)
+            .text(d => d);
+    histDiv.select('.num-select').on('change', () => {
+        const attr = histSelect.property('value');
         drawHist(attr);
     });
-    d3.selectAll('#x-select, #y-select').on('change', () => {
-        const x = d3.select('#x-select').property('value');
-        const y = d3.select('#y-select').property('value');
-        d3.select('#scatterplot').selectAll('*').remove();
+
+    // SCATTER CONTROLS
+    const scatDiv = d3.select('#scatterplot');
+    const xSelect = scatDiv.select('.x-select');
+    const ySelect = scatDiv.select('.y-select');
+    [xSelect, ySelect].forEach(sel => {
+        sel.selectAll('option')
+            .data(catAttrs.concat(numAttrs))
+            .enter().append('option')
+                .attr('value', d => d)
+                .text(d => d);
+    });
+    scatDiv.selectAll('select').on('change', () => {
+        const x = xSelect.property('value');
+        const y = ySelect.property('value');
         drawScatter(x, y);
-    });
-    d3.select('#cat-select').on('change', function() {
-        const chosen = d3.select(this).property('value');
-        d3.select('#bar-chart').selectAll('*').remove();
-        drawBar(chosen);
-    });
+    })
 
 
     // Initial bar chart draw
-    drawHist(d3.select('#num-select').property('value'));
-    drawScatter(d3.select('#x-select').property('value'),
-                d3.select('#y-select').property('value'));
-    drawBar(d3.select('#cat-select').property('value'));
+    drawHist(d3.select('.num-select').property('value'));
+    drawScatter(d3.select('.x-select').property('value'),
+                d3.select('.y-select').property('value'));
+    drawBar(d3.select('.cat-select').property('value'));
     drawScree();
     drawPCP();
     drawArea();
