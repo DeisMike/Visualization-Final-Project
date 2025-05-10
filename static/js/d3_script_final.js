@@ -28,6 +28,21 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
         };
     });
 
+    console.log('PCA ratios:', pca_explained);
+
+    // append a single hidden tooltip div to the page
+    const tooltip = d3.select('body')
+        .append('div')
+            .attr('class', 'tooltip')
+            .style('position', 'absolute')
+            .style('pointer-events', 'none')
+            .style('background', 'rgba(255,255,255,0.9)')
+            .style('padding', '6px 8px')
+            .style('border', '1px solid #aaa')
+            .style('border-radius', '4px')
+            .style('font-size', '12px')
+            .style('opacity', 0);
+
 
     // Bar chart
     function drawBar(attr, dataArray = data) {
@@ -334,7 +349,23 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
                 .attr('cy', d => yScale(d[yAttr]))
                 .attr('r', 3)
                 .attr('fill', 'steelblue')
-                .attr('opacity', 0.7);
+                .attr('opacity', 0.7)
+                // show tooltip of song, artist name
+                .on('mouseover', (event, d) => {
+                    tooltip
+                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}`)
+                        .style('opacity', 1);
+                })
+                // move it with the mouse cursor
+                .on('mousemove', event => {
+                    tooltip
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY + 10) + 'px');
+                })
+                // hide on exit
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                });
 
         } else if (xIsNum && !yIsNum) {
             // numeric X vs categorical Y: strip + jitter along Y
@@ -350,7 +381,23 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
                 )
                 .attr('r', 3)
                 .attr('fill', 'steelblue')
-                .attr('opacity', 0.7);
+                .attr('opacity', 0.7)
+                // show tooltip of song, artist name
+                .on('mouseover', (event, d) => {
+                    tooltip
+                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}`)
+                        .style('opacity', 1);
+                })
+                // move it with the mouse cursor
+                .on('mousemove', event => {
+                    tooltip
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY + 10) + 'px');
+                })
+                // hide on exit
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                });
 
         } else if (!xIsNum && yIsNum) {
             // categorical X vs numeric Y
@@ -366,7 +413,23 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
                 .attr('cy', d => yScale(d[yAttr]))
                 .attr('r', 3)
                 .attr('fill', 'steelblue')
-                .attr('opacity', 0.7);
+                .attr('opacity', 0.7)
+                // show tooltip of song, artist name
+                .on('mouseover', (event, d) => {
+                    tooltip
+                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}`)
+                        .style('opacity', 1);
+                })
+                // move it with the mouse cursor
+                .on('mousemove', event => {
+                    tooltip
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY + 10) + 'px');
+                })
+                // hide on exit
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                });
 
         } else {
             // both categorical → aggregate & overplot
@@ -406,6 +469,22 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
                 .attr('r',  d => rScale(d.count))
                 .attr('fill', 'steelblue')
                 .attr('opacity', 0.7)
+                // show tooltip of song, artist name
+                .on('mouseover', (event, d) => {
+                    tooltip
+                        .html(`${d.count} songs`)
+                        .style('opacity', 1);
+                })
+                // move it with the mouse cursor
+                .on('mousemove', event => {
+                    tooltip
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY + 10) + 'px');
+                })
+                // hide on exit
+                .on('mouseout', () => {
+                    tooltip.style('opacity', 0);
+                })
                 // store ids for brushing
                 .each(function(d) { d.__ids = d.ids; });
         }
@@ -477,9 +556,12 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
             dispatcher.call('filter', null, selectedIDs);
             });
 
-        svg.append('g')
+        const brushG = svg.append('g')
             .attr('class', 'brush')
             .call(brushScatter);
+
+        // move brush group behind *all* other SVG content
+        brushG.lower();
 
         // 10) Notify dimension change (so you can e.g. recolor on axis swap)
         dispatcher.call('dimensionChanged', null, { x: xAttr, y: yAttr });
