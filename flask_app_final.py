@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
 
@@ -11,7 +12,9 @@ df = pd.read_csv('data/Music Popularity Dataset 1962-2018.csv')
 # Precompute PCA (e.g. on the 14 numerical features)
 
 num_cols = ['release_year', 'followers', 'artist_popularity', 'song_popularity', 'duration_sec', 'acousticness', 'danceability', 'energy', 'instrumentalness', 'liveness', 'loudness', 'speechiness', 'valence', 'tempo']
-pca = PCA(n_components=10).fit(df[num_cols])
+X = df[num_cols].values
+X_scaled = StandardScaler().fit_transform(X)
+pca = PCA(n_components=10).fit(X_scaled)
 pca_explained = pca.explained_variance_ratio_.tolist()
 # Project for scree
 # Precompute MDS on correlations

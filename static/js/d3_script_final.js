@@ -28,8 +28,6 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
         };
     });
 
-    console.log('PCA ratios:', pca_explained);
-
     // append a single hidden tooltip div to the page
     const tooltip = d3.select('body')
         .append('div')
