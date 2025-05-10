@@ -487,10 +487,75 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
 
     // Scree plot
     function drawScree() {
-        const svg = d3.select('#scree-plot').append('svg');
-        const x = d3.scaleBand().domain(d3.range(pca_explained.length)).range([0, width]);
-        const y = d3.scaleLinear().domain([0, d3.max(pca_explained)]);
-        // bars
+        // Select and clear container
+        const container = d3.select('#scree-plot');
+        container.selectAll('*').remove();
+
+        // compute inner width/height
+        const margin = {top: 30, right: 20, bottom: 50, left: 60};
+        const W = parseInt(container.style('width')) - margin.left - margin.right;
+        const H = parseInt(container.style('height')) - margin.top - margin.bottom;
+
+        // Append SVG and group
+        const svg = container.append('svg')
+            .attr('width', W + margin.left + margin.right)
+            .attr('height', H + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // Prepare data
+        const pcs = pca_explained.map((v,i) => ({ pc: i+1, value: v }));
+
+        // Scales
+        const x = d3.scaleBand()
+            .domain(pcs.map(d => d.pc))
+            .range([0, W])
+            .padding(0.1);
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(pcs, d => d.value)])
+            .nice()
+            .range([H, 0]);
+
+        // Axes
+        svg.append('g')
+            .attr('transform', `translate(0,${H})`)
+            .call(d3.axisBottom(x).tickFormat(d => `PC${d}`));
+
+        svg.append('g')
+            .call(d3.axisLeft(y).tickFormat(d3.format('.0%')));
+
+        // Bars
+        svg.selectAll('.bar')
+            .data(pcs)
+            .enter().append('rect')
+                .attr('class', 'bar')
+                .attr('x', d => x(d.pc))
+                .attr('y', d => y(d.value))
+                .attr('width', x.bandwidth())
+                .attr('height', d => H - y(d.value))
+                .attr('fill', 'green');
+
+        // Title
+        svg.append('text')
+            .attr('x', W/2)
+            .attr('y', -10)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '16px')
+            .style('text-decoration', 'underline')
+            .text('PCA Scree Plot');
+
+        // Axis labels
+        svg.append('text')
+            .attr('x', W/2)
+            .attr('y', H + margin.bottom - 10)
+            .attr('text-anchor', 'middle')
+            .text('Principal Component');
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -H/2)
+            .attr('y', -margin.left + 15)
+            .attr('text-anchor', 'middle')
+            .text('Explained Variance');
     }
 
     // Parallel Coordinates
