@@ -16,10 +16,13 @@ X = df[num_cols].values
 X_scaled = StandardScaler().fit_transform(X)
 pca = PCA(n_components=10).fit(X_scaled)
 pca_explained = pca.explained_variance_ratio_.tolist()
-# Project for scree
 # Precompute MDS on correlations
-corr = df[num_cols].corr()
-mds = MDS(n_components=2, dissimilarity='precomputed').fit_transform(1 - corr.abs())
+scaled_mds_df = pd.DataFrame(X_scaled, columns=df[num_cols].columns)
+# Compute the absolute correlation matrix and then convert to distance
+corr = scaled_mds_df.corr().abs()
+distance_matrix = 1 - corr.values
+# Compute MDS embedding using precomputed distance matrix
+mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42).fit_transform(distance_matrix)
 
 @app.route('/')
 def index():
