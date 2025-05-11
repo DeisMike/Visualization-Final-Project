@@ -646,17 +646,221 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
     }
 
     // Area chart (e.g. popularity over release_year)
-    function drawArea() {
-        const yearly = d3.rollup(data, v=>d3.mean(v, d=>+d.Song_popularity), d=>d.Release_year);
+    function drawArea(dataArray = data) {
+        // clear previous chart
+        const container = d3.select('#area-chart');
+        container.select('svg').remove();
+
+        // dimensions
+        const margin = { top: 30, right: 20, bottom: 50, left: 60 };
+        const totalW = parseInt(container.style('width'));
+        const totalH = parseInt(container.style('height'));
+        const W = totalW - margin.left - margin.right;
+        const H = totalH - margin.top - margin.bottom;
+
+        // append SVG
+        const svg = container.append('svg')
+            .attr('width', totalW)
+            .attr('height', totalH)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // get list of artist types
+        const typesList = Array.from(new Set(data.map(d => d.artist_type)));
+
+        // Aggregate: for each year, sum song_popularity by type
+        const nested = Array.from(
+            d3.rollup(
+                dataArray,
+                group => {
+                    const sums = Object.fromEntries(typesList.map(t => [t,0]));
+                    group.forEach(d => {
+                        sums[d.artist_type] += d.song_popularity;
+                    });
+                    return sums;
+                },
+                d => d.release_year
+            ),
+            ([year, sums]) => Object.assign({ year: +year }, sums)
+        ).sort((a,b) => a.year - b.year);
+
+        // stack layout
+        const stackGen = d3.stack()
+            .keys(typesList);
+        const series = stackGen(nested);
+
+        // scales
+        const xScale = d3.scaleLinear()
+            .domain(d3.extent(nested, d => d.year))
+            .range([0, W]);
+        const yMax = d3.max(series, s => d3.max(s, d => d[1]));
+        const yScale = d3.scaleLinear()
+            .domain([0, yMax])
+            .nice()
+            .range([H, 0]);
+        
+        const color = d3.scaleOrdinal()
+            .domain(typesList)
+            .range(d3.schemeCategory10);
+        
         // area generator
+        const area = d3.area()
+            .x(d => xScale(d.data.year))
+            .y0(d => yScale(d[0]))
+            .y1(d => yScale(d[1]));
+
+        // draw each layer
+        svg.selectAll('.layer')
+            .data(series)
+            .enter().append('path')
+            .attr('class', 'layer')
+            .attr('d', area)
+            .attr('fill', d => color(d.key))
+            .attr('opacity', 0.8);
+        
+        // Axes
+        svg.append('g')
+            .attr('transform', `translate(0,${H})`)
+            .call(d3.axisBottom(xScale).ticks(6).tickFormat(d3.format('d')));
+        svg.append('g')
+            .call(d3.axisLeft(yScale));
+
+        // Axis labels and title
+        svg.append('text')
+            .attr('x', W/2)
+            .attr('y', -10)
+            .attr('text-anchor', 'middle')
+            .style('font-size','16px')
+            .style('text-decoration','underline')
+            .text('Song Popularity Over Time by Artist Type');
+
+        svg.append('text')
+            .attr('x', W/2)
+            .attr('y', H + margin.bottom - 10)
+            .attr('text-anchor', 'middle')
+            .text('Release Year');
+
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -H/2)
+            .attr('y', -margin.left + 15)
+            .attr('text-anchor', 'middle')
+            .text('Sum of Song Popularity');
         // brush on x-axis -> dispatch
+        const brush = d3.brushX()
+            .extent([[0,0],[W,H]])
+            .on('end', event => {
+                let years;
+                if (event.selection) {
+                    const [x0, x1] = event.selection;
+                    const y0 = xScale.invert(x0),
+                    y1 = xScale.invert(x1);
+                    years = nested
+                        .map(d => d.year)
+                        .filter(y => y >= Math.min(y0,y1) && y <= Math.max(y0,y1));
+                } else {
+                    years = nested.map(d => d.year);
+                }
+                // collect all song IDs in those years
+                const selectedIds = dataArray
+                    .filter(d => years.includes(d.release_year))
+                    .map(d => d.song_id);
+                
+                dispatcher.call('filter', null, selectedIds);
+            });
+        svg.append('g')
+            .attr('class', 'brush')
+            .call(brush);
+        // notify other charts if consider this dimension change
+        dispatcher.call('dimensionChanged', null, 'Release_year');
     }
 
     // MDS plot
     function drawMDS() {
-        const coords = data.map((d,i) => ({x: mds_coords[i][0], y: mds_coords[i][1]}));
-        // draw points
-        // brush -> dispatch
+        // Select and clear
+        const container = d3.select('#mds-plot');
+        container.selectAll('*').remove();
+
+        // Margins and inner size
+        const margin = { top: 30, right: 20, bottom: 50, left: 60 };
+        const W = parseInt(container.style('width')) - margin.left - margin.right;
+        const H = parseInt(container.style('height')) - margin.top - margin.bottom;
+
+        // SVG and group
+        const svg = container.append('svg')
+            .attr('width', W + margin.left + margin.right)
+            .attr('height', H + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        // Build array of {var, x, y}
+        const dims = ['Release_year', 'Duration_sec','Acousticness','Danceability','Energy','Instrumentalness','Liveness', 'Loudness','Speechiness','Valence','Tempo','Artist_popularity','Followers','Song_popularity'];
+        const mdsData = dims.map((variable, i) => ({
+            variable,
+            x: mds_coords[i][0],
+            y: mds_coords[i][1]
+        }));
+
+        // Scales
+        const xExtent = d3.extent(mdsData, d => d.x);
+        const yExtent = d3.extent(mdsData, d => d.y);
+        const xScale = d3.scaleLinear()
+            .domain(xExtent).nice()
+            .range([0,W]);
+        const yScale = d3.scaleLinear()
+            .domain(yExtent).nice()
+            .range([H,0]);
+
+        // Axes
+        svg.append('g')
+            .attr('transform', `translate(0,${H})`)
+            .call(d3.axisBottom(xScale));
+        svg.append('g')
+            .call(d3.axisLeft(yScale));
+
+        // Points
+        svg.selectAll('circle')
+            .data(mdsData)
+            .enter().append('circle')
+                .attr('cx', d => xScale(d.x))
+                .attr('cy', d => yScale(d.y))
+                .attr('r', 5)
+                .attr('fill', 'steelblue')
+                .attr('opacity', 0.8);
+
+        // Labels
+        svg.selectAll('.mds-label')
+            .data(mdsData)
+            .enter().append('text')
+                .attr('class', 'mds-label')
+                .attr('x', d => xScale(d.x) + 7)
+                .attr('y', d => yScale(d.y) - 7)
+                .text(d => d.variable)
+                .style('font-size', '10px')
+                .style('fill', '#333');
+        
+        // Title and axis labels
+        svg.append('text')
+            .attr('x', W/2)
+            .attr('y', -10)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '16px')
+            .style('text-decoration', 'underline')
+            .text('MDS of Variables (1 - |correlation|)');
+
+        svg.append('text')
+            .attr('x', W/2)
+            .attr('y', H + margin.bottom - 10)
+            .attr('text-anchor', 'middle')
+            .text('MDS Dimension 1');
+
+        svg.append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('x', -H/2)
+            .attr('y', -margin.left + 15)
+            .attr('text-anchor', 'middle')
+            .text('MDS Dimension 2');
+        
     }
 
     // Redraw all w/ current filter
@@ -681,6 +885,9 @@ let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS
         drawScatter(curX, curY, filteredData);
 
         // similarly add for scree, PCP, area, and MDS for those filters to update
+
+        d3.select('#area-chart').select('svg').remove();
+        drawArea(filteredData);
         
     }
 
