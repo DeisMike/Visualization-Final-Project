@@ -2,7 +2,7 @@
 const dispatcher = d3.dispatch('filter', 'dimensionChanged');
 let currentFilter = null;
 let data; 
-let brushBar, brushHist, brushScatter, brushScree, brushPCP, brushArea, brushMDS;
+let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
 (async function() {
     const res = await fetch('/api/data');
