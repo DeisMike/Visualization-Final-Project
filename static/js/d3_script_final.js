@@ -644,6 +644,12 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         const container = d3.select('#parallel-coords');
         container.select('svg').remove();
 
+        const MAX_LINES = 5000;
+        let displayData = dataArray;
+        if (dataArray.length > MAX_LINES) {
+            displayData = d3.shuffle(dataArray).slice(0, MAX_LINES);
+        }
+
         // define dimensions
         const dims = ['explicit', 'Release_year', 'Followers', 'Artist_popularity', 'Song_popularity', 'Duration_sec', 'Acousticness', 'Danceability', 'Energy', 'Instrumentalness', 'Liveness', 'Loudness', 'Speechiness', 'Valence', 'Tempo'];
 
@@ -670,7 +676,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         dims.forEach(dim => {
             if (dim === 'explicit') {
                 // categorical -> point scale
-                const domain = Array.from(new Set(dataArray.map(d=>d.explicit)));
+                const domain = Array.from(new Set(displayData.map(d=>d.explicit)));
                 yScales[dim] = d3.scalePoint()
                     .domain(domain)
                     .range([H,0])
@@ -678,7 +684,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             } else {
                 // numeric -> linear
                 yScales[dim] = d3.scaleLinear()
-                    .domain(d3.extent(dataArray, d=>+d[dim]))
+                    .domain(d3.extent(displayData, d=>+d[dim]))
                     .nice()
                     .range([H, 0]);
             }
@@ -709,7 +715,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         svg.append('g')
             .attr('class', 'background')
             .selectAll('path')
-            .data(dataArray)
+            .data(displayData)
             .enter().append('path')
                 .attr('d', path)
                 .attr('stroke', '#ddd')
@@ -719,7 +725,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         const foreground = svg.append('g')
             .attr('class', 'foreground')
             .selectAll('path')
-            .data(dataArray)
+            .data(displayData)
             .enter().append('path')
                 .attr('d', path)
                 .attr('stroke', d => color(d.artist_type))
@@ -809,7 +815,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 }
 
                 // now intersect all filters
-                let sel = dataArray;
+                let sel = displayData;
                 Object.entries(axisExtents).forEach(([k, ext]) => {
                     if (k === 'explicit') {
                         sel = sel.filter(d => ext.includes(d.explicit));
