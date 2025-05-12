@@ -1,5 +1,5 @@
 // Scales, brush, dispatch for linking
-const dispatcher = d3.dispatch('filter', 'dimensionChanged');
+const dispatcher = d3.dispatch('filter', 'dimensionChanged', 'resetPCP');
 let currentFilter = null;
 let data; 
 let brushBar, brushHist, brushScatter, brushPCP, brushArea;
@@ -639,10 +639,213 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
     }
 
     // Parallel Coordinates
-    function drawPCP() {
-        const dims = ['Release_year', 'Followers', 'Artist_popularity', 'Song_popularity', 'Duration_sec', 'Acousticness', 'Danceability', 'Energy', 'Instrumentalness', 'Liveness', 'Loudness', 'Speechiness', 'Valence', 'Tempo'];
-        // create a line for each song across axes
-        // add brushing per axis -> dispatch
+    function drawPCP(dataArray = data) {
+        // clear only the old svg
+        const container = d3.select('#parallel-coords');
+        container.select('svg').remove();
+
+        // define dimensions
+        const dims = ['explicit', 'Release_year', 'Followers', 'Artist_popularity', 'Song_popularity', 'Duration_sec', 'Acousticness', 'Danceability', 'Energy', 'Instrumentalness', 'Liveness', 'Loudness', 'Speechiness', 'Valence', 'Tempo'];
+
+        // color scale by artist type
+        const artistTypes = Array.from(new Set(data.map(d => d.artist_type)));
+        const color = d3.scaleOrdinal()
+            .domain(artistTypes)
+            .range(d3.schemeCategory10);
+
+        // sizing
+        const margin = { top: 30, right: 10, bottom: 10, left: 10 };
+        const totalW = parseInt(container.style('width'));
+        const totalH = parseInt(container.style('height'));
+        const W = totalW - margin.left - margin.right;
+        const H = totalH - margin.top - margin.bottom;
+
+        // x-scale for axes positions
+        const xScale = d3.scalePoint()
+            .domain(dims)
+            .range([0, W])
+            .padding(0.5);
+        // y-scales, one per dimension
+        const yScales = {};
+        dims.forEach(dim => {
+            if (dim === 'explicit') {
+                // categorical -> point scale
+                const domain = Array.from(new Set(dataArray.map(d=>d.explicit)));
+                yScales[dim] = d3.scalePoint()
+                    .domain(domain)
+                    .range([H,0])
+                    .padding(0.5);
+            } else {
+                // numeric -> linear
+                yScales[dim] = d3.scaleLinear()
+                    .domain(d3.extent(dataArray, d=>+d[dim]))
+                    .nice()
+                    .range([H, 0]);
+            }
+        });
+
+        // create the SVG
+        const svg = container.append('svg')
+            .attr('width', totalW)
+            .attr('height', totalH)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`)
+            .style('cursor', 'default');
+
+        // a function to build the line for one record
+        const line = d3.line()
+            .defined(([,v]) => v != null) // skip missing
+            .x(([x]) => x)
+            .y(([,y]) => y);
+
+        function path(d) {
+            return line(dims.map(dim => [
+                xScale(dim),
+                yScales[dim](d[dim])
+            ]));
+        }
+        
+        // draw background lines (light gray)
+        svg.append('g')
+            .attr('class', 'background')
+            .selectAll('path')
+            .data(dataArray)
+            .enter().append('path')
+                .attr('d', path)
+                .attr('stroke', '#ddd')
+                .attr('fill', 'none');
+        
+        // draw foreground lines, colored by artist_type
+        const foreground = svg.append('g')
+            .attr('class', 'foreground')
+            .selectAll('path')
+            .data(dataArray)
+            .enter().append('path')
+                .attr('d', path)
+                .attr('stroke', d => color(d.artist_type))
+                .attr('fill', 'none')
+                .attr('stroke-opacity', 0.7)
+                .attr('stroke-width', 1.5)
+                .attr('class', 'pcp-line');
+        
+        // store active brush/axis filters
+        const axisExtents = {}; // current filters per axis
+        const arrowHandles = {}; // to reset later
+        // add one axis + brush per dimension
+        const axisG = svg.selectAll('.dimension')
+            .data(dims)
+            .enter().append('g')
+                .attr('class', 'dimension')
+                .attr('transform', d => `translate(${xScale(d)},0)`);
+
+        axisG.each(function(dim) {
+            const g = d3.select(this);
+            const yScale = yScales[dim];
+
+            // axis generator
+            const axis = (dim === 'explicit')
+                ? d3.axisLeft(yScale)
+                    .tickFormat(d=>d) //show categorical labels
+                : d3.axisLeft(yScale);
+            
+            // draw the axis
+            g.append('g')
+                .attr('class', 'axis')
+                .call(axis)
+                .selectAll('text')
+                .style('font-size', '10px');
+
+            // add a title at top
+            g.append('text')
+                .attr('y', -9)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .text(dim);
+
+            // add custom arrow handles, initial handles at full extent
+            let y0 = 0, y1 = H;
+            const topArrow = g.append('path')
+                .attr('class', 'pcp-arrow top')
+                .attr('d', d3.symbol().type(d3.symbolTriangle).size(80))
+                .attr('transform', `translate(0,${y0}) rotate(180)`)
+                .style('cursor','ns-resize')
+                .style('fill', '#666')
+                .call(d3.drag()
+                    .on('drag', event => {
+                        y0 = Math.max(0, Math.min(event.y, y1));
+                        topArrow.attr('transform', `translate(0,${y0}) rotate(180)`);
+                        applyFilter(dim, y0, y1);
+                    })
+                );
+            const bottomArrow = g.append('path')
+                .attr('class', 'pcp-arrow bottom')
+                .attr('d', d3.symbol().type(d3.symbolTriangle).size(80))
+                .attr('transform', `translate(0,${y1})`)
+                .style('cursor', 'ns-resize')
+                .style('fill', '#666')
+                .call(d3.drag()
+                    .on('drag', event => {
+                        y1 = Math.min(H, Math.max(event.y, y0));
+                        bottomArrow.attr('transform', `translate(0,${y1})`);
+                        applyFilter(dim, y0, y1);
+                    })
+                );
+
+            // store for reset
+            arrowHandles[dim] = { topArrow, bottomArrow };
+
+            // update axisExtents and filter lines + linked charts
+            function applyFilter(dim, y0, y1) {
+                if (dim === 'explicit') {
+                   // pick cats whose position is between y0 and y1
+                   axisExtents[dim] = yScale.domain().filter(cat => {
+                        const cy = yScale(cat);
+                        return cy >= y0 && cy <= y1;
+                   });
+                } else {
+                    // invert pixel extents back to data values
+                    const v0 = yScale.invert(y1), v1 = yScale.invert(y0);
+                    axisExtents[dim] = [Math.min(v0,v1), Math.max(v0,v1)];
+                }
+
+                // now intersect all filters
+                let sel = dataArray;
+                Object.entries(axisExtents).forEach(([k, ext]) => {
+                    if (k === 'explicit') {
+                        sel = sel.filter(d => ext.includes(d.explicit));
+                    } else {
+                        sel = sel.filter(d => {
+                            const v = +d[k];
+                            return v >= ext[0] && v <= ext[1];
+                        });
+                    }
+                });
+
+                // hide polylines not in current intersection/filter
+                const selectedIDs = new Set(sel.map(d=>d.song_id));
+                foreground.style('display', d =>
+                    selectedIDs.has(d.song_id) ? null : 'none'
+                );
+
+                // linked brushing
+                dispatcher.call('filter', null, Array.from(selectedIDs));
+            }
+        });
+        // raise the lines so they sit above the axes, optionally
+        // svg.selectAll('.foreground').raise();
+
+        // reset listener for PCP only
+        dispatcher.on('resetPCP.pcp', () => {
+            // clear all axis filters
+            Object.keys(axisExtents).forEach(k => delete axisExtents[k]);
+            // reset arrows to full extents and show all lines
+            dims.forEach(dim => {
+                const { topArrow, bottomArrow } = arrowHandles[dim];
+                topArrow.attr('transform', 'translate(0,0) rotate(180)');
+                bottomArrow.attr('transform', `translate(0,${H})`);
+            });
+            foreground.style('display', null);
+        });
     }
 
     // Area chart (e.g. popularity over release_year)
@@ -888,6 +1091,9 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
         d3.select('#area-chart').select('svg').remove();
         drawArea(filteredData);
+
+        d3.select('#parallel-coords').select('svg').remove();
+        drawPCP(filteredData);
         
     }
 
@@ -895,6 +1101,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
     dispatcher.on('filter', updateAll);
 
     d3.select('#reset-btn').on('click', () => {
+        dispatcher.call('resetPCP');
         // reset data filter
         const allIDs = data.map(d => d.song_id);
         updateAll(allIDs);
@@ -903,11 +1110,12 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         d3.select('#bar-chart .brush').call(brushBar.move, null);
         d3.select('#histogram .brush').call(brushHist.move, null);
         d3.select('#scatterplot .brush').call(brushScatter.move, null);
+        dispatcher.call('filter', null, allIDs);
         // d3.select('#scree-plot .brush').call(brushScree.move, null);
         // d3.select('#pcp .brush').call(brushPCP.move, null);
         // d3.select('#area-chart .brush').call(brushArea.move, null);
         // d3.select('#mds .brush').call(brushMDS.move, null);
-    })
+    });
 
     const catAttrs = ['artist_type', 'main_genre', 'explicit', 'key', 'mode', 'time_signature'];
     const numAttrs = ['Release_year', 'Duration_sec','Acousticness','Danceability','Energy','Instrumentalness','Liveness', 'Loudness','Speechiness','Valence','Tempo','Artist_popularity','Followers','Song_popularity'];
