@@ -855,7 +855,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         container.select('svg').remove();
 
         // dimensions
-        const margin = { top: 30, right: 20, bottom: 50, left: 60 };
+        const margin = { top: 30, right: 100, bottom: 50, left: 60 };
         const totalW = parseInt(container.style('width'));
         const totalH = parseInt(container.style('height'));
         const W = totalW - margin.left - margin.right;
@@ -949,6 +949,25 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             .attr('y', -margin.left + 15)
             .attr('text-anchor', 'middle')
             .text('Sum of Song Popularity');
+
+        // Add a legend for the artist types
+        const legend = svg.append('g')
+            .attr('class', 'legend')
+            .attr('transform', `translate(${W + 20}, 0)`)
+            .style('font-family', 'sans-serif')
+            .style('font-size', '12px');
+        typesList.forEach((t, i) => {
+            const legendRow = legend.append('g')
+                .attr('transform', `translate(0, ${i * 20})`);
+            legendRow.append("rect")
+                .attr("width", 12)
+                .attr("height", 12)
+                .attr("fill", color(t));
+            legendRow.append("text")
+                .attr("x", 18)
+                .attr("y", 10)
+                .text(t);
+        });
         // brush on x-axis -> dispatch
         const brush = d3.brushX()
             .extent([[0,0],[W,H]])
