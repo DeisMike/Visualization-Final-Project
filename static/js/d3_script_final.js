@@ -50,9 +50,6 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             const container = d3.select('#bar-chart');
             container.select('svg').remove();
 
-            container.append('div')
-                .attr('class', 'no-data')
-                .text('No data to display');
             return;
         }
         // 1) Clear old
@@ -151,7 +148,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 const selectedIDs = dataArray.filter(d => selectedCats.includes(d[attr])).map(d => d.song_id);
 
                 // fire the global filter event
-                dispatcher.call('filter', null, selectedIDs);
+                dispatcher.call('filter', null, selectedIDs, 'external');
             });
 
         svg.append('g')
@@ -170,9 +167,6 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             const container = d3.select('#histogram');
             container.select('svg').remove();
 
-            container.append('div')
-                .attr('class', 'no-data')
-                .text('No data to display');
             return;
         }
         // 1) Clear old
@@ -265,7 +259,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 });
                 }
                 const selectedIDs = selected.map(d => d.song_id);
-                dispatcher.call('filter', null, selectedIDs);
+                dispatcher.call('filter', null, selectedIDs, 'external');
             });
 
         svg.append('g')
@@ -284,9 +278,6 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             const container = d3.select('#scatterplot');
             container.select('svg').remove();
 
-            container.append('div')
-                .attr('class', 'no-data')
-                .text('No data to display');
             return;
         }
         // 1) Clear old
@@ -585,7 +576,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 }
             }
 
-            dispatcher.call('filter', null, selectedIDs);
+            dispatcher.call('filter', null, selectedIDs, 'external');
             });
 
         const brushG = svg.append('g')
@@ -604,6 +595,9 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         // clear only the old svg
         const container = d3.select('#parallel-coords');
         container.select('svg').remove();
+
+        let baseFilter = new Set(data.map(d=>d.song_id)); // start unfiltered
+        let pcpFilter = new Set(baseFilter);
 
         const MAX_LINES = 5000;
         // track the current axis ordering
@@ -699,13 +693,22 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             .attr('font-weight', 'bold')
             .style('font-size', '14px')
             .text(`Parallel Coordinates Plot`);
+
+        // helper to show/hide PCP lines
+        function updatePCPVis() {
+            foreground.style('display', d =>
+                baseFilter.has(d.song_id) && pcpFilter.has(d.song_id)
+                    ? null  // visible
+                    : 'none' // hidden
+            );
+        }
             
         // Subscribe to external brushing/filtering
-        dispatcher.on('filter.pcpExternal', selectedIDs => {
-            const idSet = new Set(selectedIDs);
-            foreground.style('display', d =>
-                idSet.has(d.song_id) ? null : 'none'
-            );
+        dispatcher.on('filter.pcpExternal', (selectedIDs, source) => {
+            // only update baseFilter when the event came from outside PCP
+            if (source === 'pcp') return;
+            baseFilter = new Set(selectedIDs);
+            updatePCPVis();
         });
         
         // store active brush/axis filters
@@ -818,27 +821,27 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                     axisExtents[dim] = [Math.min(v0,v1), Math.max(v0,v1)];
                 }
 
-                // now intersect all filters
-                let sel = displayData;
-                Object.entries(axisExtents).forEach(([k, ext]) => {
-                    if (k === 'explicit') {
-                        sel = sel.filter(d => ext.includes(d.explicit));
-                    } else {
-                        sel = sel.filter(d => {
-                            const v = +d[k];
-                            return v >= ext[0] && v <= ext[1];
-                        });
-                    }
-                });
-
-                // hide polylines not in current intersection/filter
-                const selectedIDs = new Set(sel.map(d=>d.song_id));
-                foreground.style('display', d =>
-                    selectedIDs.has(d.song_id) ? null : 'none'
+                // compute pcpFilter from *full data* (not displayData) by axisExtents
+                pcpFilter = new Set(
+                    data.filter(d => {
+                        if (dim === 'explicit') {
+                            return axisExtents[dim].includes(d.explicit);
+                        } else {
+                            const [minv, maxv] = axisExtents[dim];
+                            const v = +d[dim];
+                            return v >= minv && v <= maxv;
+                        }
+                    })
+                    .map(d => d.song_id)
                 );
 
+                // combine with baseFilter
+                const combined = [...baseFilter].filter(id => pcpFilter.has(id));
+
+                updatePCPVis();
+
                 // linked brushing
-                dispatcher.call('filter', null, Array.from(selectedIDs));
+                dispatcher.call('filter', null, combined, 'pcp');
             }
 
             function reorderAxes() {
@@ -917,9 +920,6 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             const container = d3.select('#area-chart');
             container.select('svg').remove();
 
-            container.append('div')
-                .attr('class', 'no-data')
-                .text('No data to display');
             return;
         }
         // clear previous chart
@@ -1060,7 +1060,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                     .filter(d => years.includes(d.release_year))
                     .map(d => d.song_id);
                 
-                dispatcher.call('filter', null, selectedIds);
+                dispatcher.call('filter', null, selectedIds, 'external');
             });
         svg.append('g')
             .attr('class', 'brush')
