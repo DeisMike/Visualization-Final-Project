@@ -123,9 +123,9 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         // Add y-axis label
         svg.append("text")
             .attr("transform", `translate(${-margin.left +
-                20},${H / 2}) rotate(-90)`)
+                20-8},${H / 2}) rotate(-90)`)
             .style("text-anchor", "middle")
-            .text("Number of songs");
+            .text("Count");
         
         // Brushing
         brushBar = d3.brushX()
@@ -223,8 +223,9 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         // Axis labels
         svg.append('text')
             .attr('x',  W / 2)
-            .attr('y',  H + margin.bottom - 10)
+            .attr('y',  H + margin.bottom - 10 - 18)
             .attr('text-anchor', 'middle')
+            .style('font-size', '11px')
             .text(attr);
 
         svg.append('text')
@@ -599,7 +600,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         let baseFilter = new Set(data.map(d=>d.song_id)); // start unfiltered
         let pcpFilter = new Set(baseFilter);
 
-        const MAX_LINES = 5000;
+        const MAX_LINES = 2000;
         // track the current axis ordering
         let dimsOrder = [
             'explicit', 
@@ -821,16 +822,18 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                     axisExtents[dim] = [Math.min(v0,v1), Math.max(v0,v1)];
                 }
 
-                // compute pcpFilter from *full data* (not displayData) by axisExtents
+                // compute pcpFilter from *full data* (not displayData) by *every* axis that's been brushed
                 pcpFilter = new Set(
                     data.filter(d => {
-                        if (dim === 'explicit') {
-                            return axisExtents[dim].includes(d.explicit);
-                        } else {
-                            const [minv, maxv] = axisExtents[dim];
-                            const v = +d[dim];
-                            return v >= minv && v <= maxv;
-                        }
+                        // every key in axisExtents must pass
+                        return Object.entries(axisExtents).every(([key, ext]) => {
+                            if (key === 'explicit') {
+                                return ext.includes(d.explicit);
+                            } else {
+                                const v = +d[key];
+                                return v >= ext[0] && v <= ext[1];
+                            }
+                        });
                     })
                     .map(d => d.song_id)
                 );
@@ -943,20 +946,25 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         // get list of artist types
         const typesList = Array.from(new Set(data.map(d => d.artist_type)));
 
-        // Aggregate: for each year, sum song_popularity by type
+        // Aggregate: for each year, average song_popularity by type
         const nested = Array.from(
             d3.rollup(
                 dataArray,
                 group => {
-                    const sums = Object.fromEntries(typesList.map(t => [t,0]));
-                    group.forEach(d => {
-                        sums[d.artist_type] += d.song_popularity;
-                    });
-                    return sums;
+                    // for each artist type, take mean of that year's pop scores
+                    return Object.fromEntries(
+                        typesList.map(t => {
+                            const vals = group
+                                .filter(d => d.artist_type === t)
+                                .map(d => d.song_popularity);
+                            const avg = vals.length ? d3.mean(vals) : 0;
+                            return [t, avg];
+                        })
+                    );
                 },
                 d => d.release_year
             ),
-            ([year, sums]) => Object.assign({ year: +year }, sums)
+            ([year, avgs]) => Object.assign({ year: +year }, avgs)
         ).sort((a,b) => a.year - b.year);
 
         // stack layout
@@ -1020,7 +1028,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             .attr('x', -H/2)
             .attr('y', -margin.left + 15)
             .attr('text-anchor', 'middle')
-            .text('Sum of Song Popularity');
+            .text('Average of Song Popularity');
 
         // Add a legend for the artist types
         const legend = svg.append('g')
