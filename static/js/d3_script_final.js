@@ -382,10 +382,10 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 .attr('r', 3)
                 .attr('fill', 'steelblue')
                 .attr('opacity', 0.7)
-                // show tooltip of song, artist name
+                // show tooltip of song, artist name, release year
                 .on('mouseover', (event, d) => {
                     tooltip
-                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}`)
+                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}<br/>${d.release_year}`)
                         .style('opacity', 1);
                 })
                 // move it with the mouse cursor
@@ -414,10 +414,10 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 .attr('r', 3)
                 .attr('fill', 'steelblue')
                 .attr('opacity', 0.7)
-                // show tooltip of song, artist name
+                // show tooltip of song, artist name, release year
                 .on('mouseover', (event, d) => {
                     tooltip
-                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}`)
+                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}<br/>${d.release_year}`)
                         .style('opacity', 1);
                 })
                 // move it with the mouse cursor
@@ -446,10 +446,10 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 .attr('r', 3)
                 .attr('fill', 'steelblue')
                 .attr('opacity', 0.7)
-                // show tooltip of song, artist name
+                // show tooltip of song, artist name, release year
                 .on('mouseover', (event, d) => {
                     tooltip
-                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}`)
+                        .html(`<strong>${d.song_name}</strong><br/>${d.artist}<br/>${d.release_year}`)
                         .style('opacity', 1);
                 })
                 // move it with the mouse cursor
@@ -672,16 +672,6 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             ]));
         }
         
-        // draw background lines (light gray)
-        //svg.append('g')
-            //.attr('class', 'background')
-            //.selectAll('path')
-            //.data(displayData)
-            //.enter().append('path')
-                //.attr('d', path)
-                //.attr('stroke', '#ddd')
-                //.attr('fill', 'none');
-        
         // draw foreground lines, colored by artist_type
         const foreground = svg.append('g')
             .attr('class', 'foreground')
@@ -734,7 +724,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             g.append('text')
                 .attr('y', -9)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '12px')
+                .style('font-size', '6.8px')
                 .text(dim);
 
             // add custom arrow handles, initial handles at full extent
