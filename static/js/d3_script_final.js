@@ -112,8 +112,8 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             .attr("x", (W / 2) - margin.left + 40)
             .attr("y", 0 - ((margin.top - 10) / 2))
             .attr("text-anchor", "middle")
+            .attr('font-weight', 'bold')
             .style("font-size", "16px")
-            .style("text-decoration", "underline")
             .text(`Distribution of Songs by ${attr} `);
 
         // Add x-axis label
@@ -222,8 +222,8 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             .attr('x', (W / 2) - margin.left + 40)
             .attr('y', 0 - ((margin.top - 10) / 2))
             .attr('text-anchor', 'middle')
+            .attr('font-weight', 'bold')
             .style('font-size', '16px')
-            .style('text-decoration', 'underline')
             .text(`Distribution of Songs by ${attr}`);
 
         // Axis labels
@@ -350,11 +350,11 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
         // Add title
         svg.append('text')
-            .attr('x', (W / 2) - margin.left + 40)
+            .attr('x', (W / 2) - margin.left + 70)
             .attr('y', 0 - ((margin.top - 10) / 2))
             .attr('text-anchor', 'middle')
+            .attr('font-weight', 'bold')
             .style('font-size', '16px')
-            .style('text-decoration', 'underline')
             .text(`Scatterplot of ${yAttr} vs ${xAttr}`);
 
         // 7) Axis labels
@@ -684,6 +684,15 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 .attr('stroke-opacity', 0.7)
                 .attr('stroke-width', 1.5)
                 .attr('class', 'pcp-line');
+
+        // Add PCP plot title
+        svg.append('text')
+            .attr('x', (W / 2) - margin.left + 40)
+            .attr('y', 0 - 7 - ((margin.top - 10) / 2))
+            .attr('text-anchor', 'middle')
+            .attr('font-weight', 'bold')
+            .style('font-size', '14px')
+            .text(`Parallel Coordinates Plot`);
             
         // Subscribe to external brushing/filtering
         dispatcher.on('filter.pcpExternal', selectedIDs => {
@@ -906,11 +915,11 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
         // Axis labels and title
         svg.append('text')
-            .attr('x', W/2)
+            .attr('x', (W/2) + 15)
             .attr('y', -10)
             .attr('text-anchor', 'middle')
+            .attr('font-weight', 'bold')
             .style('font-size','16px')
-            .style('text-decoration','underline')
             .text('Song Popularity Over Time by Artist Type');
 
         svg.append('text')
@@ -1040,10 +1049,10 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         // Title and axis labels
         svg.append('text')
             .attr('x', W/2)
-            .attr('y', -10)
+            .attr('y', -10 - 5)
             .attr('text-anchor', 'middle')
+            .attr('font-weight', 'bold')
             .style('font-size', '16px')
-            .style('text-decoration', 'underline')
             .text('MDS of Variables (1 - |correlation|)');
 
         svg.append('text')
