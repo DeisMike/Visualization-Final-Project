@@ -724,7 +724,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
             g.append('text')
                 .attr('y', -9)
                 .attr('text-anchor', 'middle')
-                .style('font-size', '6.8px')
+                .style('font-size', '7.5px')
                 .text(dim);
 
             // add custom arrow handles, initial handles at full extent
