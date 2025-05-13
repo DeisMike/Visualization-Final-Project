@@ -14,7 +14,7 @@ body {
 
 #chart-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: 2fr 1fr 1fr;
     grid-template-rows: repeat(2, minmax(0, 1fr));
     gap: 10px;
     height: calc(100vh - 60px); /* leave room for controls */
@@ -63,6 +63,6 @@ body {
 #scatterplot  { grid-area: 1 / 1 / 2 / 2; }
 #histogram{ grid-area: 1 / 2 / 2 / 3; }
 #bar-chart { grid-area: 1 / 3 / 2 / 4; }
-#parallel-coords{ grid-area: 2 / 1 / 3 / 3; }
-#area-chart       { grid-area: 2 / 3 / 3 / 4; }
-#mds-plot     { grid-area: 2 / 4 / 3 / 5; }
+#parallel-coords{ grid-area: 2 / 1 / 3 / 2; }
+#area-chart       { grid-area: 2 / 2 / 3 / 3; }
+#mds-plot     { grid-area: 2 / 3 / 3 / 4; }
