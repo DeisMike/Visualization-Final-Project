@@ -59,11 +59,10 @@ body {
     height: 100%;
     display: block; /* remove inline-SVG whitespace */
 }
-/* Place 7 charts: last cell empty */
-#scree-plot  { grid-area: 1 / 1 / 2 / 2; }
-#scatterplot  { grid-area: 1 / 2 / 2 / 3; }
-#histogram{ grid-area: 1 / 3 / 2 / 4; }
-#bar-chart { grid-area: 1 / 4 / 2 / 5; }
+/* Place 6 charts: last cell empty */
+#scatterplot  { grid-area: 1 / 1 / 2 / 2; }
+#histogram{ grid-area: 1 / 2 / 2 / 3; }
+#bar-chart { grid-area: 1 / 3 / 2 / 4; }
 #parallel-coords{ grid-area: 2 / 1 / 3 / 3; }
-#mds-plot     { grid-area: 2 / 3 / 3 / 4; }
-#area-chart       { grid-area: 2 / 4 / 3 / 5; }
+#area-chart       { grid-area: 2 / 3 / 3 / 4; }
+#mds-plot     { grid-area: 2 / 4 / 3 / 5; }
