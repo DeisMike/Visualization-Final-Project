@@ -53,6 +53,10 @@ body {
     align-items: center;
 }
 
+.dimension.dragging {
+    opacity: 0.8;
+}
+
 .chart svg {
     flex: 1;
     width: 100%; /* fill the cell exactly */

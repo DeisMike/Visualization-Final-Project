@@ -606,6 +606,12 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         container.select('svg').remove();
 
         const MAX_LINES = 5000;
+        // track the current axis ordering
+        let dimsOrder = [
+            'explicit', 
+            'Release_year', 'Followers', 'Artist_popularity', 'Song_popularity', 'Duration_sec', 'Acousticness', 'Danceability', 
+            'Energy', 'Instrumentalness', 'Liveness', 'Loudness', 'Speechiness', 'Valence', 'Tempo'
+        ];
         let displayData = dataArray;
         if (dataArray.length > MAX_LINES) {
             displayData = d3.shuffle(dataArray).slice(0, MAX_LINES);
@@ -629,7 +635,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
         // x-scale for axes positions
         const xScale = d3.scalePoint()
-            .domain(dims)
+            .domain(dimsOrder)
             .range([0, W])
             .padding(0.5);
         // y-scales, one per dimension
@@ -707,7 +713,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         const arrowHandles = {}; // to reset later
         // add one axis + brush per dimension
         const axisG = svg.selectAll('.dimension')
-            .data(dims)
+            .data(dimsOrder, d => d)  // key by dim name
             .enter().append('g')
                 .attr('class', 'dimension')
                 .attr('transform', d => `translate(${xScale(d)},0)`);
@@ -730,11 +736,41 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 .style('font-size', '10px');
 
             // add a title at top
-            g.append('text')
+            const title = g.append('text')
                 .attr('y', -9)
                 .attr('text-anchor', 'middle')
                 .style('font-size', '7.5px')
+                .style('cursor', 'ew-resize')
                 .text(dim);
+
+            title.call(d3.drag()
+                .on('start', () => 
+                    // bring its axis group to front
+                    title.classed('dragging', true)
+                )
+                .on('end', (event, dim) => {
+                    title.classed('dragging', false);
+
+                    // get pointer X in chart-coords
+                    const [px] = d3.pointer(event, svg.node());
+
+                    // find two closest axes to each axis center
+                    const distances = dimsOrder.map(d => ({
+                        d,
+                        dist: Math.abs(px - xScale(d))
+                    }));
+                    // sort by distance and take the second entry (first is itself)
+                    distances.sort((a,b) => a.dist - b.dist);
+                    const nearest = distances[0].d;
+
+                    // swap positions in dimsOrder
+                    const i = dimsOrder.indexOf(dim);
+                    const j = dimsOrder.indexOf(nearest);
+                    [dimsOrder[i], dimsOrder[j]] = [dimsOrder[j], dimsOrder[i]];
+                    // recompute order & re-layout everything
+                    reorderAxes();
+                })
+            );
 
             // add custom arrow handles, initial handles at full extent
             let y0 = 0, y1 = H;
@@ -803,6 +839,57 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
                 // linked brushing
                 dispatcher.call('filter', null, Array.from(selectedIDs));
+            }
+
+            function reorderAxes() {
+                // update the xScale domain
+                xScale.domain(dimsOrder);
+        
+                // smoothly move the axis groups into their new spots
+                axisG.transition().duration(500)
+                    .attr('transform', d => `translate(${xScale(d)},0)`);
+        
+                // re-draw the polylines to follow the new axis order
+                foreground.transition().duration(500)
+                    .attr('d', d => line(dimsOrder.map(dim => [
+                        xScale(dim),
+                        yScales[dim](d[dim])
+                    ])));
+                
+                // reposition your arrow handles so they stick to the same filter extents
+                dimsOrder.forEach(dim => {
+                    let ext = axisExtents[dim];
+                    // DEFAULT to full-domain if no brush on that axis yet:
+                    if (!ext) {
+                        if (dim === 'explicit') {
+                            ext = yScales[dim].domain().slice();
+                        } else {
+                            const d = yScales[dim].domain();
+                            ext = [d[0], d[1]];
+                        }
+                        axisExtents[dim] = ext;
+                    }
+                    const { topArrow, bottomArrow } = arrowHandles[dim];
+        
+                    // compute pixel Y positions from stored data-space filter
+                    let y0, y1;
+                    if (dim === 'explicit') {
+                        // categorical, pick min/max of selected cat positions
+                        const ys = ext.map(cat => yScales[dim](cat));
+                        y0 = Math.min(...ys);
+                        y1 = Math.max(...ys);
+                    } else {
+                        // numeric
+                        y0 = yScales[dim](ext[1]);
+                        y1 = yScales[dim](ext[0]);
+                    }
+        
+                    // move arrows
+                    topArrow.transition().duration(500)
+                        .attr('transform', `translate(0,${y0}) rotate(180)`);
+                    bottomArrow.transition().duration(500)
+                        .attr('transform', `translate(0,${y1})`);
+                });
             }
         });
         // raise the lines so they sit above the axes, optionally
