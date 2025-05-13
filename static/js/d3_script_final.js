@@ -352,7 +352,7 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         // 7) Axis labels
         svg.append('text')
             .attr('x', W / 2)
-            .attr('y', H + margin.bottom - 10)
+            .attr('y', H + margin.bottom - 10 -20)
             .attr('text-anchor', 'middle')
             .text(xAttr);
 
