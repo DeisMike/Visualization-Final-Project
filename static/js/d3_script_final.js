@@ -44,9 +44,21 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
     // Bar chart
     function drawBar(attr, dataArray = data) {
-        // Setup and sizing
+        // if nothing to draw, bail out
+        if(!dataArray || dataArray.length === 0) {
+            // 1) Clear old
+            const container = d3.select('#bar-chart');
+            container.select('svg').remove();
+
+            container.append('div')
+                .attr('class', 'no-data')
+                .text('No data to display');
+            return;
+        }
+        // 1) Clear old
         const container = d3.select('#bar-chart');
         container.select('svg').remove();
+        // Setup and sizing
         const margin = {top: 20, right: 20, bottom: 70, left: 40};
         const W = parseInt(container.style('width'))  - margin.left - margin.right;
         const H = parseInt(container.style('height')) - margin.top  - margin.bottom;
@@ -152,7 +164,18 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
     // Histogram
     function drawHist(attr, dataArray = data) {
-        // Clear out any old chart
+        // if nothing to draw, bail out
+        if(!dataArray || dataArray.length === 0) {
+            // 1) Clear old
+            const container = d3.select('#histogram');
+            container.select('svg').remove();
+
+            container.append('div')
+                .attr('class', 'no-data')
+                .text('No data to display');
+            return;
+        }
+        // 1) Clear old
         const container = d3.select('#histogram');
         container.select('svg').remove();
 
@@ -255,6 +278,17 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
     // Scatterplot (handles three cases)
     function drawScatter(xAttr, yAttr, dataArray = data) {
+        // if nothing to draw, bail out
+        if(!dataArray || dataArray.length === 0) {
+            // 1) Clear old
+            const container = d3.select('#scatterplot');
+            container.select('svg').remove();
+
+            container.append('div')
+                .attr('class', 'no-data')
+                .text('No data to display');
+            return;
+        }
         // 1) Clear old
         const container = d3.select('#scatterplot');
         container.select('svg').remove();
@@ -712,14 +746,14 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         }
         
         // draw background lines (light gray)
-        svg.append('g')
-            .attr('class', 'background')
-            .selectAll('path')
-            .data(displayData)
-            .enter().append('path')
-                .attr('d', path)
-                .attr('stroke', '#ddd')
-                .attr('fill', 'none');
+        //svg.append('g')
+            //.attr('class', 'background')
+            //.selectAll('path')
+            //.data(displayData)
+            //.enter().append('path')
+                //.attr('d', path)
+                //.attr('stroke', '#ddd')
+                //.attr('fill', 'none');
         
         // draw foreground lines, colored by artist_type
         const foreground = svg.append('g')
@@ -856,6 +890,17 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
 
     // Area chart (e.g. popularity over release_year)
     function drawArea(dataArray = data) {
+        // if nothing to draw, bail out
+        if(!dataArray || dataArray.length === 0) {
+            // 1) Clear old
+            const container = d3.select('#area-chart');
+            container.select('svg').remove();
+
+            container.append('div')
+                .attr('class', 'no-data')
+                .text('No data to display');
+            return;
+        }
         // clear previous chart
         const container = d3.select('#area-chart');
         container.select('svg').remove();
@@ -1112,13 +1157,8 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
         d3.select('#scatterplot').select('svg').remove();
         drawScatter(curX, curY, filteredData);
 
-        // similarly add for scree, PCP, area, and MDS for those filters to update
-
         d3.select('#area-chart').select('svg').remove();
         drawArea(filteredData);
-
-        d3.select('#parallel-coords').select('svg').remove();
-        drawPCP(filteredData);
         
     }
 
