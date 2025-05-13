@@ -767,6 +767,14 @@ let brushBar, brushHist, brushScatter, brushPCP, brushArea;
                 .attr('stroke-opacity', 0.7)
                 .attr('stroke-width', 1.5)
                 .attr('class', 'pcp-line');
+            
+        // Subscribe to external brushing/filtering
+        dispatcher.on('filter.pcpExternal', selectedIDs => {
+            const idSet = new Set(selectedIDs);
+            foreground.style('display', d =>
+                idSet.has(d.song_id) ? null : 'none'
+            );
+        });
         
         // store active brush/axis filters
         const axisExtents = {}; // current filters per axis
